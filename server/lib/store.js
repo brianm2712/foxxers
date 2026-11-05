@@ -63,8 +63,16 @@ class Store {
    */
   persist() {
     const tmp = `${this.file}.${process.pid}.tmp`;
-    fs.writeFileSync(tmp, JSON.stringify(this.db, null, 1), { mode: 0o600 });
+    const fd = fs.openSync(tmp, 'w', 0o600);
+    try {
+      fs.writeFileSync(fd, JSON.stringify(this.db, null, 1));
+      fs.fsyncSync(fd);
+    } finally {
+      fs.closeSync(fd);
+    }
     fs.renameSync(tmp, this.file);
+    const dir = fs.openSync(path.dirname(this.file), 'r');
+    try { fs.fsyncSync(dir); } finally { fs.closeSync(dir); }
   }
 
   /** Coalesce bursts of writes; a booking touches three collections. */
